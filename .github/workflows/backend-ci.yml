@@ -1,0 +1,76 @@
+# ============================================
+# 后端 CI：lint → typecheck → test → build
+# ============================================
+# 触发条件：所有 push 和 PR（聚焦后端目录变化，避免前端改动触发无意义构建）
+# Node 版本：从 server/.nvmrc 读取（= 20 LTS）
+# 数据库：本 workflow 不连库；测试用例只用 in-memory createApp()
+
+name: backend-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/backend-ci.yml'
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: lint → typecheck → test → build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # ★ monorepo 风格：所有命令都在 server/ 子目录跑
+        working-directory: server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # ★ 锁版本：从 .nvmrc 读，与本地一致
+          node-version-file: server/.nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        # ★ Prisma client 必须先生成，否则 import 不到类型
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        # ★ --reporter=verbose 让 GitHub 日志显示每个用例名
+        run: npm run test -- --reporter=verbose
+
+      - name: Build
+        # ★ 把 dist 产物作为 artifact 上传，方便 review PR 时下载验证
+        run: npm run build
+
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-dist
+          path: server/dist
+          retention-days: 7
+          if-no-files-found: ignore

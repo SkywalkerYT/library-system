@@ -1,0 +1,68 @@
+import axios, { type AxiosError } from 'axios';
+import { useAuthStore } from '@/stores/auth';
+import router from '@/router';
+import type { ApiErr, ApiResp } from '@/types';
+
+// ★ axios 实例：基础路径
+//   - 开发：'/api'（Vite proxy 转发到 http://localhost:3000）
+//   - 生产：读 VITE_API_BASE_URL 环境变量（如 'https://library-api.up.railway.app/api'）
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+
+export const http = axios.create({
+  baseURL,
+  timeout: 15000,
+});
+
+// ★ 请求拦截：自动带 Authorization
+http.interceptors.request.use((cfg) => {
+  const auth = useAuthStore();
+  if (auth.token) {
+    cfg.headers.Authorization = `Bearer ${auth.token}`;
+  }
+  return cfg;
+});
+
+// ★ 响应拦截：401 踢回登录
+http.interceptors.response.use(
+  (resp) => resp,
+  (err: AxiosError<ApiErr>) => {
+    if (err.response?.status === 401) {
+      const auth = useAuthStore();
+      auth.clear();
+      if (router.currentRoute.value.name !== 'login') {
+        router.push({ name: 'login' });
+      }
+    }
+    return Promise.reject(err);
+  }
+);
+
+// ★ 帮助函数：解包 {success, data}，把后端业务错误抛成 ApiError
+export class ApiError extends Error {
+  code: string;
+  status: number;
+  constructor(message: string, code: string, status: number) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export async function request<T>(p: Promise<{ data: ApiResp<T> }>): Promise<T> {
+  try {
+    const { data } = await p;
+    if (data.success) return data.data;
+    throw new ApiError(data.error.message, data.error.code, 0);
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    if (axios.isAxiosError(err)) {
+      const body = err.response?.data as ApiErr | undefined;
+      throw new ApiError(
+        body?.error?.message ?? err.message,
+        body?.error?.code ?? 'NETWORK_ERROR',
+        err.response?.status ?? 0
+      );
+    }
+    throw err;
+  }
+}

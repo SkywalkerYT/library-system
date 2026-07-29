@@ -1,0 +1,27 @@
+# ============================================
+# 仓库根 .gitignore（防御层）
+# ============================================
+# 子目录各自的 .gitignore 已经覆盖：
+#   server/.gitignore  → node_modules/、dist/、.env、*.log
+#   client/.gitignore  → node_modules、dist、.env、.vite、.vscode/* 等
+# 这里只兜底可能漏在根目录的杂物。
+
+# 本地环境变量（万一有人复制到根目录）
+.env
+.env.local
+
+# 杂项
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.bak
+
+# 编辑器/IDE（子目录没盖到的部分）
+.idea/
+.vscode/
+!.vscode/extensions.json
+
+# 临时文件
+tmp/
+*.tmp

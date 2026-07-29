@@ -1,0 +1,28 @@
+version: "3.9"
+
+# ★ 本地开发用：一条命令启动 MySQL 8
+# ★ 与 server/.env + README 对齐：
+#   - db 名：mybook_db（注意：MySQL 26.7 fork 把 library 视为保留字，避开）
+#   - 账号：root / root123（极简，dev only；生产用 Railway 自带的随机密码）
+# 启动：docker-compose up -d mysql
+# 停止：docker-compose down
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: library-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: mybook_db
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  mysql_data:
