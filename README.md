@@ -149,3 +149,96 @@ npm run dev                 # http://localhost:5173
 - [ ] 管理员视图（看所有用户的书）
 - [ ] 邮件提醒（应还日前 3 天）
 - [x] ~~二期 BOOK_DIGESTS 迁库（title+author 唯一索引 + summary 字段）~~ — 已完成：`Book.summary` 字段已在 schema 中，纯 DB 查询实现
+
+---
+
+## 附录：部署点单清单
+
+> 上面「部署上线」是流程概述；这里是**逐步点击清单** —— 复制粘贴命令、照着点鼠标即可。
+
+### A. 推送代码到 GitHub
+
+```bash
+# 1) 在 GitHub 上 New Repository，名字比如 library-system，不要勾任何初始化选项
+# 2) 本地添加 remote 并推送
+git remote add origin git@github.com:你的用户名/library-system.git
+git push -u origin main
+```
+
+推送成功后访问 `https://github.com/你的用户名/library-system`，应该看到 67 个文件、CI 绿对勾。
+
+### B. Railway（后端 + 数据库）
+
+| # | 操作 | 备注 |
+|---|---|---|
+| 1 | 登录 [railway.app](https://railway.app/) → **New Project** → **Deploy from GitHub repo** → 选 `library-system` | 第一次会让 GitHub 授权 |
+| 2 | 项目里点 **+ New** → **Database** → **MySQL** | 等 1~2 分钟初始化完成 |
+| 3 | 点 MySQL 服务 → **Variables** 标签 → 复制 `MYSQL_URL`（格式 `mysql://root:xxx@xxx.railway.app:PORT/railway`） | 这串等会要用 |
+| 4 | 项目里再点 **+ New** → **GitHub Repo** → 选 `library-system` 同一个仓库 | 会拉一份独立服务 |
+| 5 | 新服务点 **Settings** → **Root Directory** 填 `server` → **Save** | 不填会找不到 package.json |
+| 6 | 新服务点 **Variables** → **+ New Variable**，逐条加： | 见下表 ↓ |
+| 7 | 点 **Deploy** → 看 logs，等出现 `Server listening on 0.0.0.0:PORT` | 第一次部署会跑 `prisma migrate deploy` |
+| 8 | 新服务点 **Settings** → **Networking** → **Generate Domain` | 拿到形如 `https://xxx.up.railway.app` 的域名 |
+
+**Variables 清单**（B-6 步骤用）：
+
+| Key | Value | 说明 |
+|---|---|---|
+| `DATABASE_URL` | 粘贴 B-3 复制的那串 `MYSQL_URL` | 也可直接用 Railway 引用语法 `${{MySQL.MYSQL_URL}}` |
+| `JWT_SECRET` | `openssl rand -hex 32` 输出粘贴进来 | 32 字节随机；**不要用 `secret` 这种弱值** |
+| `CLIENT_ORIGIN` | **先留空**，部署前端后再回来填 | CORS 白名单 |
+| `NODE_ENV` | `production` | 关掉 tsx watch 等开发特性 |
+
+**冒烟验证**：拿到 Railway 域名后，本地 `curl` 一下确认通了再走前端部署：
+
+```bash
+curl https://xxx.up.railway.app/api/health
+# 期望：{"success":true,"data":{"ok":true}}
+```
+
+### C. Vercel（前端）
+
+| # | 操作 | 备注 |
+|---|---|---|
+| 1 | 登录 [vercel.com](https://vercel.com/) → **Add New…** → **Project** → 选 `library-system` 仓库 → **Import** | 第一次会让 GitHub 授权 |
+| 2 | **Project Configuration** → **Root Directory** → 点 **Edit** → 选 `client` | 不选会找不到 vite.config |
+| 3 | **Environment Variables** 加 1 条：`VITE_API_BASE` = `https://xxx.up.railway.app/api` | **末尾必须有 `/api`** |
+| 4 | 点 **Deploy** → 等 1~2 分钟 | 构建日志里有 `✓ built in` 即成功 |
+| 5 | 部署完跳到项目页 → 顶部会显示域名 `https://library-system-xxx.vercel.app` | 复制这个域名 |
+| 6 | **回到 B-6 步骤** → 把 `CLIENT_ORIGIN` 填成上面那个 Vercel 域名 → Railway 自动重启 | 不填前端调 API 会撞 CORS |
+| 7 | 浏览器打开 Vercel 域名 → 注册账号 → 自己加书 → 看到 KPI 面板 = 上线完成 |  |
+
+### D. 部署后冒烟（必走）
+
+| 场景 | 命令 / 操作 | 期望 |
+|---|---|---|
+| 后端健康 | `curl https://xxx.up.railway.app/api/health` | `{"success":true,"data":{"ok":true}}` |
+| 跨域通 | 浏览器打开 Vercel 域名 → 注册 → 进首页 | 控制台无 CORS 红字 |
+| 数据隔离 | 注册 A → 加书 → 退出 → 注册 B → 加书 → 看 B 的列表 | B 看不到 A 的书（userId 隔离生效） |
+| 借出冲突 | 对同一本书借出两次 | 第二次返回 409，UI 弹「该书已借出」 |
+
+### E. 日常维护
+
+| 任务 | 命令 |
+|---|---|
+| 改 schema | `cd server && npx prisma migrate dev --name <name>` → 提交 → 推 main → Railway 自动 `prisma migrate deploy` |
+| 跑单元测 | `cd server && npm test` |
+| 跑集成测 | `cd server && npm run test:integration`（需要本地 MySQL） |
+| 看数据库 | `npx prisma studio` 打开本地 GUI；Railway 的 MySQL 用 Railway 内置 Data tab |
+| 看部署日志 | Railway 项目页 → 服务 → **Deployments** 标签 → 任一点开看 logs |
+
+---
+
+## 验证完成清单
+
+每勾一项就证明这块已经可以生产使用：
+
+- [x] 本地 MySQL 启动 + `prisma migrate status` = `up to date`
+- [x] `npm test` 通过（health 单测 2 个）
+- [x] `npm run test:integration` 通过（端到端冒烟 1 个：register→login→add→borrow→return→stats→delete）
+- [x] `npm run dev` 后 `curl http://localhost:3000/api/health` = 200
+- [x] curl 全链 9 个端点状态码全对：register 201、login 200、addBook 201、borrow 200、return 200、stats 200、重复 borrow 409、未鉴权 401、delete 200
+- [x] GitHub Actions 工作流文件齐全：`backend-ci.yml` + `frontend-ci.yml`
+- [ ] 推到 GitHub → CI 绿（需 GitHub 账号）
+- [ ] Railway 部署 → `curl https://xxx.up.railway.app/api/health` 通（需 Railway 账号）
+- [ ] Vercel 部署 → 浏览器走通注册加书全流程（需 Vercel 账号）
