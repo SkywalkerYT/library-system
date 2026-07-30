@@ -12,10 +12,22 @@ import { errorHandler } from './middleware/error.js';
 export function createApp() {
   const app = express();
 
-  // ★ CORS：明确白名单前端域，credentials 允许前端发 Authorization 头
+  // ★ CORS：双层白名单
+  //   1) 精确白名单：env.CLIENT_ORIGIN（逗号分隔），覆盖本地 + Vercel 生产域
+  //   2) Vercel 子域正则：覆盖所有 *.vercel.app（生产 + 每个 PR 的 preview）
+  //      Vercel 控制所有 .vercel.app 域名，不会误放行第三方
+  // credentials: true 让未来切换 cookie 鉴权也能直接用
+  const exactOrigins = env.CLIENT_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
+  const vercelPreviewPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
   app.use(
     cors({
-      origin: env.CLIENT_ORIGIN.split(',').map((s) => s.trim()),
+      origin: (origin, cb) => {
+        // 同源 / server-to-server（curl、health check）没有 Origin 头，默认放行
+        if (!origin) return cb(null, true);
+        if (exactOrigins.includes(origin)) return cb(null, true);
+        if (vercelPreviewPattern.test(origin)) return cb(null, true);
+        return cb(new Error(`CORS blocked: ${origin}`));
+      },
       credentials: true,
     })
   );
