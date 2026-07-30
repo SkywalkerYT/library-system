@@ -8,7 +8,7 @@ export const booksApi = {
   async get(id: number) {
     return request<Book>(http.get(`/books/${id}`));
   },
-  async create(input: { title: string; author: string; category: string; summary?: string }) {
+  async create(input: { title: string; author: string; category: string; summary?: string | null }) {
     return request<Book>(http.post('/books', input));
   },
   async update(id: number, input: Partial<{ title: string; author: string; category: string; summary: string | null }>) {
