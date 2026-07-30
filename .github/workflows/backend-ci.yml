@@ -2,7 +2,7 @@
 # 后端 CI：lint → typecheck → test → build
 # ============================================
 # 触发条件：所有 push 和 PR（聚焦后端目录变化，避免前端改动触发无意义构建）
-# Node 版本：从 server/.nvmrc 读取（= 20 LTS）
+# Node 版本：从 server/.nvmrc 读取（= 24 LTS / lts/jod）
 # 数据库：本 workflow 不连库；测试用例只用 in-memory createApp()
 
 name: backend-ci
