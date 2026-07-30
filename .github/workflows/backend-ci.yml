@@ -8,16 +8,11 @@
 name: backend-ci
 
 on:
+  # ★ 不限路径：README、.gitignore、docs/ 改了也跑（避免 paths 过滤导致 CI 静默跳过）
   push:
     branches: [main]
-    paths:
-      - 'server/**'
-      - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'server/**'
-      - '.github/workflows/backend-ci.yml'
 
 concurrency:
   group: backend-ci-${{ github.ref }}
