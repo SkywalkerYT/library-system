@@ -1,22 +1,16 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+// AppHeader：左侧品牌 + 右侧账户菜单（点击头像展开账户信息/退出登录）
 import { useAuthStore } from '@/stores/auth';
+import AccountMenu from './AccountMenu.vue';
 
-const router = useRouter();
 const auth = useAuthStore();
-
-function logout() {
-  auth.clear();
-  router.replace('/login');
-}
 </script>
 
 <template>
   <header class="app-header">
     <div class="brand">📚 我的小书库 · Online</div>
     <div class="meta" v-if="auth.user">
-      <span class="display-name">{{ auth.user.displayName }}</span>
-      <button class="btn btn--ghost" @click="logout">退出登录</button>
+      <AccountMenu />
     </div>
   </header>
 </template>
@@ -42,8 +36,5 @@ function logout() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--color-text-soft);
 }
-.display-name { color: var(--color-text); font-weight: 500; }
 </style>

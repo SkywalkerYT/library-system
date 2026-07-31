@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import AppHeader from '@/components/AppHeader.vue';
 import StatsPanel from '@/components/StatsPanel.vue';
 import BookCard from '@/components/BookCard.vue';
@@ -33,11 +33,8 @@ const confirmState = ref<{
   onConfirm: () => void;
 }>({ open: false, title: '', message: '', onConfirm: () => {} });
 
-const categories = computed(() => {
-  const set = new Set<string>();
-  for (const b of books.items) if (b.category) set.add(b.category);
-  return Array.from(set).sort();
-});
+// ★ 全量分类 pill：来自 store 全量缓存（mount 时一次拉完，按书数倒序）
+const categories = computed(() => books.categories.map((c) => c.name));
 
 const totalPages = computed(() => Math.max(1, Math.ceil(books.total / pageSize)));
 
@@ -54,12 +51,28 @@ async function reload() {
 }
 
 onMounted(async () => {
-  await Promise.all([books.fetchStats(), reload()]);
+  // ★ fetchCategories 不依赖列表/筛选——拉一次就够，放外面并行
+  await Promise.all([books.fetchStats(), books.fetchCategories(), reload()]);
 });
 
-watch([keyword, category, status], () => {
+watch([category, status], () => {
   page.value = 1;
   reload();
+});
+
+// ★ keyword 单独防抖 300ms：避免输入"三体"触发 3 次 API（"三"/"三体"/"三体球"）
+//   用 ref 持有定时器 id，onUnmounted 时清理——否则组件销毁后回调还会触发 reload
+const keywordTimer = ref<number | null>(null);
+watch(keyword, () => {
+  if (keywordTimer.value !== null) window.clearTimeout(keywordTimer.value);
+  keywordTimer.value = window.setTimeout(() => {
+    keywordTimer.value = null;
+    page.value = 1;
+    reload();
+  }, 300);
+});
+onUnmounted(() => {
+  if (keywordTimer.value !== null) window.clearTimeout(keywordTimer.value);
 });
 
 function openCreate() {
@@ -174,6 +187,28 @@ function goPage(p: number) {
     <main class="container">
       <StatsPanel />
 
+      <!-- ★ 分类快捷筛选 pill list（顶部一眼可见，一键切换） -->
+      <nav v-if="categories.length > 0" class="category-pills" aria-label="分类筛选">
+        <button
+          type="button"
+          class="pill"
+          :class="{ 'pill--active': category === '' }"
+          @click="category = ''"
+        >
+          全部
+        </button>
+        <button
+          v-for="c in categories"
+          :key="c"
+          type="button"
+          class="pill"
+          :class="{ 'pill--active': category === c }"
+          @click="category = c"
+        >
+          {{ c }}
+        </button>
+      </nav>
+
       <section class="toolbar">
         <div class="search">
           <input
@@ -186,10 +221,6 @@ function goPage(p: number) {
             <option value="">全部状态</option>
             <option value="AVAILABLE">在馆</option>
             <option value="BORROWED">借出</option>
-          </select>
-          <select v-model="category" aria-label="分类">
-            <option value="">全部分类</option>
-            <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
           </select>
         </div>
         <div class="toolbar-right">
@@ -304,6 +335,34 @@ function goPage(p: number) {
   margin-bottom: 0.5rem;
 }
 .checkbox-all { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+
+/* ★ 分类 pill list —— 顶部一排可滚动的小药丸 */
+.category-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding: 0.4rem 0.25rem;
+}
+.pill {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-radius: 999px;
+  padding: 0.32rem 0.9rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.pill:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.pill--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.pill--active:hover { background: var(--color-primary); color: #fff; }
 
 .grid {
   display: grid;
