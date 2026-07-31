@@ -9,14 +9,25 @@ const auth = useAuthStore();
 
 const email = ref('');
 const password = ref('');
+const confirmPassword = ref('');
 const displayName = ref('');
 const errorMsg = ref('');
 const submitting = ref(false);
+
+// ★ 用户已开始输入"确认密码"且两次不一致 → 显示提示
+//   空时不提示（避免页面打开瞬间就显示"不一致"）
+const passwordsMismatch = computed(
+  () => confirmPassword.value.length > 0 && confirmPassword.value !== password.value
+);
+const passwordsMatch = computed(
+  () => confirmPassword.value.length > 0 && confirmPassword.value === password.value
+);
 
 const isValid = computed(
   () =>
     /\S+@\S+\.\S+/.test(email.value) &&
     password.value.length >= 8 &&
+    confirmPassword.value === password.value &&
     displayName.value.trim().length >= 1
 );
 
@@ -39,7 +50,7 @@ async function submit() {
   <div class="auth-page">
     <div class="auth-card">
       <h1 class="auth-title">注册 · 我的小书库</h1>
-      <p class="hint">注册即获 50 本示例书目，可立即体验</p>
+      <p class="hint">注册即可登录社区馆藏，立即体验借还流程</p>
       <form @submit.prevent="submit">
         <div class="field">
           <label for="displayName">昵称</label>
@@ -52,6 +63,19 @@ async function submit() {
         <div class="field">
           <label for="password">密码</label>
           <input id="password" type="password" v-model="password" placeholder="至少 8 位" autocomplete="new-password" required />
+        </div>
+        <div class="field">
+          <label for="confirmPassword">确认密码</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            v-model="confirmPassword"
+            placeholder="再输入一次"
+            autocomplete="new-password"
+            required
+          />
+          <p v-if="passwordsMismatch" class="hint-inline hint-inline--err">两次密码不一致</p>
+          <p v-else-if="passwordsMatch" class="hint-inline hint-inline--ok">✓ 密码一致</p>
         </div>
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
         <button class="btn btn--primary auth-submit" type="submit" :disabled="!isValid || submitting">
@@ -107,4 +131,11 @@ async function submit() {
   font-size: 0.85rem;
 }
 .error { color: var(--color-danger); font-size: 0.85rem; margin: 0 0 0.5rem; }
+
+.hint-inline {
+  font-size: 0.78rem;
+  margin: 0.3rem 0 0;
+}
+.hint-inline--err { color: var(--color-danger); }
+.hint-inline--ok  { color: var(--color-success, #16a34a); }
 </style>
