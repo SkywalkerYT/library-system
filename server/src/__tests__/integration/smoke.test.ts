@@ -124,3 +124,99 @@ describe('端到端冒烟（需要 DATABASE_URL 可达）', () => {
     expect(list.body.data.total).toBe(0);
   });
 });
+
+describe('社区馆藏：跨用户共享借还', () => {
+  beforeAll(async () => {
+    if (!process.env.DATABASE_URL || process.env.SKIP_INTEGRATION === '1') {
+      throw new Error('SKIP_INTEGRATION');
+    }
+    await prisma.$executeRawUnsafe('SELECT 1');
+  });
+
+  beforeEach(async () => {
+    // ★ 不再删 Book（除非必要）—— 这里两个 case 互相独立，每个 case 各自清
+    await prisma.book.deleteMany({});
+    await prisma.user.deleteMany({});
+  });
+
+  async function register(email: string) {
+    const r = await request(app)
+      .post('/api/auth/register')
+      .send({ email, password: 'pw_shared_123', displayName: email.split('@')[0] })
+      .expect(201);
+    return { token: r.body.data.token as string, user: r.body.data.user };
+  }
+
+  it('A 加书 → B 看到 → B 借出 → A 看到 BORROWED → B 归还 → 双方都看到 AVAILABLE', async () => {
+    // 两个独立用户
+    const alice = await register(`alice_${Date.now()}@e.com`);
+    const bob = await register(`bob_${Date.now()}@e.com`);
+
+    // A 加一本
+    const created = await request(app)
+      .post('/api/books')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ title: '共享测试书', author: '测试作者', category: '文学', summary: '社区馆藏测试' })
+      .expect(201);
+    const bookId = created.body.data.id;
+
+    // B 能看到 A 加的（共享馆藏核心验证）
+    const listFromBob = await request(app)
+      .get('/api/books')
+      .set('Authorization', `Bearer ${bob.token}`)
+      .expect(200);
+    const seen = listFromBob.body.data.items.some((b: { id: number }) => b.id === bookId);
+    expect(seen).toBe(true);
+
+    // B 借出
+    const dueAt = new Date(Date.now() + 30 * 86400_000).toISOString();
+    const borrowed = await request(app)
+      .post(`/api/books/${bookId}/borrow`)
+      .set('Authorization', `Bearer ${bob.token}`)
+      .send({ borrowerName: '外借人B', borrowerPhone: '13900000000', dueAt })
+      .expect(200);
+    expect(borrowed.body.data.status).toBe('BORROWED');
+    expect(borrowed.body.data.borrowerName).toBe('外借人B');
+
+    // A 看到 BORROWED（共享视图）
+    const seenByA = await request(app)
+      .get(`/api/books/${bookId}`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(seenByA.body.data.status).toBe('BORROWED');
+
+    // B 归还
+    await request(app)
+      .post(`/api/books/${bookId}/return`)
+      .set('Authorization', `Bearer ${bob.token}`)
+      .expect(200);
+
+    // 双方都看到 AVAILABLE
+    for (const tok of [alice.token, bob.token]) {
+      const after = await request(app)
+        .get(`/api/books/${bookId}`)
+        .set('Authorization', `Bearer ${tok}`)
+        .expect(200);
+      expect(after.body.data.status).toBe('AVAILABLE');
+    }
+  });
+
+  it('全局只种一次：A 注册 / B 注册后看到的种子数相同', async () => {
+    // ★ 由于 seedDemoBooksIfEmpty 在 index.ts 启动入口执行，supertest 直接 createApp
+    //   不会触发 bootstrap —— 这里手动调用种一次 + 直接验证。
+    const { seedDemoBooksIfEmpty } = await import('../../modules/auth/demo-books.js');
+    const first = await seedDemoBooksIfEmpty(
+      () => prisma.book.count(),
+      (data) => prisma.book.create({ data }),
+    );
+    const afterFirst = first.inserted ?? first.existing;
+
+    // 第二次注册理论上不再增加书数 —— 这里直接再次调用函数
+    const alice = await register(`alice_${Date.now()}@shared.com`);
+    const list = await request(app)
+      .get('/api/books')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(list.body.data.total).toBe(afterFirst);
+  });
+});

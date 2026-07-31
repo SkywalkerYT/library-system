@@ -28,7 +28,7 @@ export const booksController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       const q = listQuerySchema.parse(req.query);
-      const data = await booksService.list(req.userId!, q);
+      const data = await booksService.list(q);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
@@ -38,7 +38,7 @@ export const booksController = {
   async get(req: Request, res: Response, next: NextFunction) {
     try {
       const id = parseIdParam(req);
-      const data = await booksService.get(req.userId!, id);
+      const data = await booksService.get(id);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
@@ -48,7 +48,7 @@ export const booksController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const input = bookCreateSchema.parse(req.body);
-      const data = await booksService.create(req.userId!, input);
+      const data = await booksService.create(input);
       // ★ 201 Created：POST 创建资源 → REST 语义
       res.status(201).json({ success: true, data });
     } catch (err) {
@@ -60,7 +60,7 @@ export const booksController = {
     try {
       const id = parseIdParam(req);
       const input = bookUpdateSchema.parse(req.body);
-      const data = await booksService.update(req.userId!, id, input);
+      const data = await booksService.update(id, input);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
@@ -70,7 +70,7 @@ export const booksController = {
   async remove(req: Request, res: Response, next: NextFunction) {
     try {
       const id = parseIdParam(req);
-      await booksService.remove(req.userId!, id);
+      await booksService.remove(id);
       res.json({ success: true, data: { id } });
     } catch (err) {
       next(err);
@@ -80,7 +80,7 @@ export const booksController = {
   async batchDelete(req: Request, res: Response, next: NextFunction) {
     try {
       const { ids } = batchDeleteSchema.parse(req.body);
-      const data = await booksService.batchDelete(req.userId!, ids);
+      const data = await booksService.batchDelete(ids);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
@@ -91,7 +91,7 @@ export const booksController = {
     try {
       const id = parseIdParam(req);
       const input = borrowSchema.parse(req.body);
-      const data = await booksService.borrow(req.userId!, id, input);
+      const data = await booksService.borrow(id, input);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
@@ -101,7 +101,7 @@ export const booksController = {
   async return(req: Request, res: Response, next: NextFunction) {
     try {
       const id = parseIdParam(req);
-      const data = await booksService.return(req.userId!, id);
+      const data = await booksService.return(id);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
@@ -110,7 +110,16 @@ export const booksController = {
 
   async stats(req: Request, res: Response, next: NextFunction) {
     try {
-      const data = await booksService.stats(req.userId!);
+      const data = await booksService.stats();
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async categories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await booksService.categories();
       res.json({ success: true, data });
     } catch (err) {
       next(err);

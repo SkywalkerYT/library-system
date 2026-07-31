@@ -33,14 +33,10 @@ model User {
   displayName  String   @db.VarChar(50)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  books Book[]
 }
 
 model Book {
   id           Int        @id @default(autoincrement())
-  userId       Int        // 应用层关联（PlanetScale 不支持外键）
-  user         User       @relation(fields: [userId], references: [id])
   title        String     @db.VarChar(50)
   author       String     @db.VarChar(30)
   category     String     @db.VarChar(20)
@@ -56,7 +52,8 @@ model Book {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  @@index([userId])
-  @@index([userId, status])
-  @@index([userId, category])
+  // ★ 社区图书馆：Book 是全社区共享的实体，无 userId 归属
+  //   联合索引按 status / category 提升过滤性能
+  @@index([status])
+  @@index([category])
 }
