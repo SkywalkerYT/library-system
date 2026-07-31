@@ -5,6 +5,7 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
+import { prisma } from './config/prisma.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { booksRouter } from './modules/books/books.routes.js';
 import { errorHandler } from './middleware/error.js';
@@ -12,20 +13,26 @@ import { errorHandler } from './middleware/error.js';
 export function createApp() {
   const app = express();
 
+  // ★ 信任一层反向代理（Sealos / Railway / Nginx 等）——
+  //   否则 express-rate-limit 拿到的全是代理 IP，全局一刀切封禁
+  app.set('trust proxy', 1);
+
   // ★ CORS：双层白名单
   //   1) 精确白名单：env.CLIENT_ORIGIN（逗号分隔），覆盖本地 + Vercel 生产域
-  //   2) Vercel 子域正则：覆盖所有 *.vercel.app（生产 + 每个 PR 的 preview）
-  //      Vercel 控制所有 .vercel.app 域名，不会误放行第三方
+  //   2) Vercel preview 子域：env.VERCEL_PREVIEW_ORIGINS（逗号分隔）—— 显式白名单
+  //      之前用通配正则放开所有 *.vercel.app，攻击者可注册任意 vercel.app 子域绕过。
+  //      现在必须显式声明每个 preview 域名。
   // credentials: true 让未来切换 cookie 鉴权也能直接用
   const exactOrigins = env.CLIENT_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
-  const vercelPreviewPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+  const vercelPreviewOrigins = (env.VERCEL_PREVIEW_ORIGINS ?? '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
   app.use(
     cors({
       origin: (origin, cb) => {
         // 同源 / server-to-server（curl、health check）没有 Origin 头，默认放行
         if (!origin) return cb(null, true);
         if (exactOrigins.includes(origin)) return cb(null, true);
-        if (vercelPreviewPattern.test(origin)) return cb(null, true);
+        if (vercelPreviewOrigins.includes(origin)) return cb(null, true);
         return cb(new Error(`CORS blocked: ${origin}`));
       },
       credentials: true,
@@ -36,7 +43,14 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
 
   // ★ 路由按模块挂载
-  app.get('/api/health', (_req, res) => res.json({ success: true, data: { ok: true } }));
+  // /api/health 真实探活：DB 能查 → ok=true，否则 false（仍返 200，让 LB 通过 data.ok 判断）
+  app.get('/api/health', async (_req, res) => {
+    const dbOk = await prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false);
+    res.json({
+      success: true,
+      data: { ok: dbOk, uptime: process.uptime(), ts: Date.now() },
+    });
+  });
   app.use('/api/auth', authRouter);
   app.use('/api/books', booksRouter);
 

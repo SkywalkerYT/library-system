@@ -11,6 +11,9 @@ const schema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET 至少 16 个字符'),
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
+  // ★ Vercel preview 子域白名单（逗号分隔）—— 之前用通配正则放开所有 *.vercel.app，
+  //   攻击者可注册任意 vercel.app 子域绕过 CORS。现改为显式白名单。
+  VERCEL_PREVIEW_ORIGINS: z.string().default(''),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
