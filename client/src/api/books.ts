@@ -1,5 +1,5 @@
 import { http, request } from './client';
-import type { Book, BookStats, ListQuery, ListResult } from '@/types';
+import type { Book, BookStats, CategoryItem, ListQuery, ListResult } from '@/types';
 
 export const booksApi = {
   async list(q: ListQuery) {
@@ -28,5 +28,9 @@ export const booksApi = {
   },
   async stats() {
     return request<BookStats>(http.get('/books/stats'));
+  },
+  // ★ 全量分类（不受分页/筛选影响），给 BookListView 顶部 pill 列表用
+  async categories() {
+    return request<CategoryItem[]>(http.get('/books/categories'));
   },
 };

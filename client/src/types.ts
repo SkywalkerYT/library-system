@@ -33,6 +33,12 @@ export interface BookStats {
   available: number;
 }
 
+// ★ 单个分类项：name 给 pill 用，count 留给「分类 + 书数小角标」用
+export interface CategoryItem {
+  name: string;
+  count: number;
+}
+
 export interface ListQuery {
   keyword?: string;
   category?: string;

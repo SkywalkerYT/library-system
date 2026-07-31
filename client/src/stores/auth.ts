@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { authApi } from '@/api/auth';
+import { ApiError } from '@/api/client';
 import type { User } from '@/types';
 
 const STORAGE_KEY = 'lib_token';
@@ -34,8 +35,17 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       user.value = await authApi.me();
       return user.value;
-    } catch {
-      clear();
+    } catch (err) {
+      // ★ 网络抖动 / 后端短暂不可用：保留 token，只清 user。
+      //   下次路由守卫会再触发 fetchMe 自愈；如果 token 真过期，
+      //   后续 API 调用的 401 拦截器会处理（走 TOKEN_EXPIRED 分支）。
+      //   唯一例外：API 明确返回 TOKEN_EXPIRED / TOKEN_INVALID，
+      //   这时清掉 token，避免无限重试同一个死 token。
+      if (err instanceof ApiError && (err.code === 'TOKEN_EXPIRED' || err.code === 'TOKEN_INVALID')) {
+        clear();
+      } else {
+        user.value = null;
+      }
       return null;
     }
   }

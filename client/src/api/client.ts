@@ -22,16 +22,33 @@ http.interceptors.request.use((cfg) => {
   return cfg;
 });
 
-// ★ 响应拦截：401 踢回登录
+// ★ 响应拦截：
+//   - 401 TOKEN_EXPIRED → 清登录态 + 静默跳登录（保留 redirect）
+//   - 401 TOKEN_INVALID → 清登录态 + 跳登录（可疑，需重新登录）
+//   - 401 其他/无 code → 视为网络抖动，不动登录态，让上层捕获
+//   - 非 401 → 原样抛出
 http.interceptors.response.use(
   (resp) => resp,
   (err: AxiosError<ApiErr>) => {
-    if (err.response?.status === 401) {
-      const auth = useAuthStore();
-      auth.clear();
-      if (router.currentRoute.value.name !== 'login') {
-        router.push({ name: 'login' });
-      }
+    if (err.response?.status !== 401) {
+      return Promise.reject(err);
+    }
+    const code = err.response.data?.error?.code;
+    const auth = useAuthStore();
+
+    // 只有显式 TOKEN_EXPIRED / TOKEN_INVALID 才清登录态并跳登录
+    // 其他 401（无 code / 自定义 code）当作可疑但不动 token，
+    // 让调用方自己处理，避免被踢下线后无法自愈。
+    if (code !== 'TOKEN_EXPIRED' && code !== 'TOKEN_INVALID') {
+      return Promise.reject(err);
+    }
+
+    auth.clear();
+    if (router.currentRoute.value.name !== 'login') {
+      router.replace({
+        name: 'login',
+        query: { redirect: router.currentRoute.value.fullPath },
+      });
     }
     return Promise.reject(err);
   }
