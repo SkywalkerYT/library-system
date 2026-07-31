@@ -25,3 +25,30 @@ Thumbs.db
 # 临时文件
 tmp/
 *.tmp
+
+# ============================================
+# 安全：SSH 私钥（绝不能 commit）
+# ============================================
+# Sealos DevBox 部署密钥
+sealos-*.pem
+sealos-*.pem.*
+*.pem.run_ns-*
+*.pem.run_*
+
+# ============================================
+# 构建产物 / 部署打包（不入库）
+# ============================================
+# zip / tar.gz 打包文件
+*.zip
+*.tar.gz
+*.tgz
+
+# 命名约定显式再列一遍（防止其它 glob 失效）
+client-dist.*
+server-dist.*
+client.zip
+server.zip
+client-dist.zip
+client-dist.tar.gz
+server-dist.zip
+server-dist.tar.gz
