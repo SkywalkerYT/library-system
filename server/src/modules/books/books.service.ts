@@ -47,12 +47,13 @@ export const booksService = {
     return { deleted: count };
   },
 
-  async borrow(id: number, input: BorrowInput) {
+  async borrow(id: number, input: BorrowInput, userId: number) {
     // 仓储层已直接抛 HttpError(409, 'ALREADY_BORROWED')；这里只补 404
     const result = await booksRepo.borrow(id, {
       borrowerName: input.borrowerName,
       borrowerPhone: input.borrowerPhone,
       dueAt: new Date(input.dueAt),
+      borrowerUserId: userId,   // ★ 借阅人 ID：用于 admin 用户列表借阅数统计
     });
     if (!result) throw new HttpError(404, 'BOOK_NOT_FOUND', '图书不存在');
     return result;

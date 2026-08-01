@@ -12,6 +12,7 @@ declare global {
   namespace Express {
     interface Request {
       userId?: number;
+      isAdmin?: boolean;   // ★ 新增：requireAuth 挂上、requireAdmin 二次校验
     }
   }
 }
@@ -28,6 +29,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const payload = verifyJwt(header.slice(7));
     req.userId = payload.userId;
+    req.isAdmin = payload.isAdmin;   // ★ 挂到 req（仅"快速路径"，admin 路由还要 requireAdmin 再查 DB）
     next();
   } catch (err) {
     // ★ 区分过期 vs 伪造 —— 给前端更精确的提示，前端可选择「静默续签」或「强制跳登录」

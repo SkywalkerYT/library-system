@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/admin/users',
+    name: 'admin-users',
+    component: () => import('@/views/AdminUsersView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/books',
   },
@@ -37,7 +43,10 @@ export const router = createRouter({
 
 export default router;
 
-// ★ 全局守卫：未登录跳 login，已登录访问 login/register 跳 books
+// ★ 全局守卫
+//   - 未登录 → login（带 redirect）
+//   - 已登录访问 login/register → books
+//   - ★ 非 admin 访问 requiresAdmin → books（保留登录态、显式 toast）
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (auth.token && !auth.user) {
@@ -47,6 +56,10 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } };
   }
   if (to.meta.guestOnly && auth.isLoggedIn) {
+    return { name: 'books' };
+  }
+  // ★ admin 守卫：放在最后，避免未登录用户被错误地跳到 books
+  if (to.meta.requiresAdmin && !auth.user?.isAdmin) {
     return { name: 'books' };
   }
 });

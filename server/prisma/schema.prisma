@@ -31,8 +31,11 @@ model User {
   email        String   @unique @db.VarChar(191)
   passwordHash String   @db.VarChar(255)
   displayName  String   @db.VarChar(50)
+  isAdmin      Boolean  @default(false)        // ★ RBAC：手动 SQL 提权（受控、可审计）
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([isAdmin])   // 中间件二次校验（adminRouter 每次请求查 isAdmin）
 }
 
 model Book {
@@ -44,10 +47,11 @@ model Book {
   summary      String?    @db.Text
 
   // ★ 借阅字段（新增）
-  borrowerName  String?   @db.VarChar(30)
-  borrowerPhone String?   @db.VarChar(20)
-  borrowedAt    DateTime?
-  dueAt         DateTime?
+  borrowerName   String?   @db.VarChar(30)
+  borrowerPhone  String?   @db.VarChar(20)
+  borrowedAt     DateTime?
+  dueAt          DateTime?
+  borrowerUserId Int?      // ★ 借阅人 ID（用于 admin 用户列表"当前借阅数"统计）
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -56,4 +60,5 @@ model Book {
   //   联合索引按 status / category 提升过滤性能
   @@index([status])
   @@index([category])
+  @@index([borrowerUserId, status])   // 借阅数统计：WHERE borrowerUserId = ? AND status = ?
 }

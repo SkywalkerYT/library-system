@@ -44,6 +44,12 @@ function logout() {
   router.replace('/login');
 }
 
+// ★ 跳管理员页：先关浮层再 push，避免浮层 DOM 残留
+function goAdmin() {
+  close();
+  router.push('/admin/users');
+}
+
 /**
  * 点击组件外部关闭浮层 —— 用 contains 判断
  * ★ 注意：trigger 上用 @click.stop 防自爆
@@ -113,6 +119,15 @@ onUnmounted(() => {
 
       <!-- 底部：操作 -->
       <div class="popover-foot">
+        <!-- ★ admin 入口：路由层 beforeEach 已拦截非 admin（防御性 UX 隐藏） -->
+        <button
+          v-if="auth.user?.isAdmin"
+          class="btn btn--ghost btn--block"
+          type="button"
+          @click="goAdmin"
+        >
+          管理员面板
+        </button>
         <button class="btn btn--ghost btn--block" type="button" @click="logout">退出登录</button>
       </div>
     </div>

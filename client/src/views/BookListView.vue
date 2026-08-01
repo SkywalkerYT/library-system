@@ -7,10 +7,14 @@ import BookFormDialog from '@/components/BookFormDialog.vue';
 import BorrowDialog from '@/components/BorrowDialog.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { useBooksStore } from '@/stores/books';
+import { useAuthStore } from '@/stores/auth';
 import type { Book, BookStatus, ListQuery } from '@/types';
 import { ApiError } from '@/api/client';
 
 const books = useBooksStore();
+// ★ admin 透传：是否在 BookCard 显示完整手机号
+const auth = useAuthStore();
+const isAdmin = computed(() => auth.user?.isAdmin ?? false);
 
 const keyword = ref('');
 const category = ref('');
@@ -255,6 +259,7 @@ function goPage(p: number) {
           :key="book.id"
           :book="book"
           :selected="selectedIds.has(book.id)"
+          :is-admin="isAdmin"
           @toggle-select="toggleSelect"
           @edit="openEdit"
           @borrow="openBorrow"

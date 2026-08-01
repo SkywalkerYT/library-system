@@ -9,6 +9,7 @@ export interface User {
   id: number;
   email: string;
   displayName: string;
+  isAdmin: boolean;   // ★ 新增：登录态带 admin 标记
   createdAt: string; // ISO
 }
 
@@ -20,11 +21,22 @@ export interface Book {
   status: BookStatus;
   summary: string | null;
   borrowerName: string | null;
-  borrowerPhone: string | null;
+  borrowerPhone: string | null;          // ★ 明文（admin 用）
+  borrowerPhoneMasked: string | null;    // ★ 遮罩版（非 admin 用）
   borrowedAt: string | null;
   dueAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// ★ Admin 用户列表项（仅后端 /api/admin/users 返回）
+export interface AdminUserListItem {
+  id: number;
+  email: string;
+  displayName: string;
+  isAdmin: boolean;
+  createdAt: string;
+  borrowedCount: number;
 }
 
 export interface BookStats {

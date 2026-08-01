@@ -8,6 +8,7 @@ import { env } from './config/env.js';
 import { prisma } from './config/prisma.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { booksRouter } from './modules/books/books.routes.js';
+import { adminRouter } from './modules/admin/admin.routes.js';
 import { errorHandler } from './middleware/error.js';
 
 export function createApp() {
@@ -53,6 +54,8 @@ export function createApp() {
   });
   app.use('/api/auth', authRouter);
   app.use('/api/books', booksRouter);
+  // ★ /api/admin/* 走 adminRouter —— 模块级 requireAuth + requireAdmin 双重守卫
+  app.use('/api/admin', adminRouter);
 
   // ★ 404 兜底
   app.use((req, res) => {

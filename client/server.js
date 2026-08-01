@@ -2,6 +2,7 @@
 // Sealos 前端 DevBox 静态服务 + /api 反代
 // - 静态文件：dist/（含 SPA fallback）
 // - /api/* 反代到 backend DevBox 内部地址
+// - /healthz 健康检查（NLB 探针专用，不走文件 IO）
 //
 // 用法：
 //   PORT=8080 node server.js
@@ -117,6 +118,17 @@ function serveStatic(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  // ★ 健康检查端点 — Sealos NLB / K8s probe 约定路径
+  //   不读文件、不走 SPA fallback，纯字符串返回（纳秒级响应）
+  //   'no-store' 防止被任何中间层缓存：避免 server 真挂时探针拿到旧 OK
+  //   同时兼容 /healthz（K8s 约定）和 /health（部分平台默认）
+  if (req.url === '/healthz' || req.url === '/health') {
+    return send(res, 200, {
+      'content-type': 'text/plain',
+      'cache-control': 'no-store',
+    }, 'OK');
+  }
+
   if (req.url.startsWith('/api/')) return proxyApi(req, res);
   serveStatic(req, res);
 });

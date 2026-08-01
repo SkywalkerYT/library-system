@@ -5,6 +5,7 @@
 // ============================================
 import { prisma } from '../../config/prisma.js';
 import { HttpError } from '../../utils/errors.js';
+import { maskPhone } from '../../utils/mask.js';
 import type { Book, BookStatus, Prisma } from '@prisma/client';
 
 export const booksRepo = {
@@ -68,7 +69,7 @@ export const booksRepo = {
     return result.count;
   },
 
-  async borrow(id: number, data: { borrowerName: string; borrowerPhone: string; dueAt: Date }) {
+  async borrow(id: number, data: { borrowerName: string; borrowerPhone: string; dueAt: Date; borrowerUserId: number }) {
     // ★ 原子借出：用 updateMany 带 WHERE status='AVAILABLE'，
     //   MySQL 行锁保证并发只有一个请求能成功，避免 findFirst+update 的 TOCTOU 窗口
     const updated = await prisma.book.updateMany({
@@ -79,6 +80,7 @@ export const booksRepo = {
         borrowerPhone: data.borrowerPhone,
         borrowedAt: new Date(),
         dueAt: data.dueAt,
+        borrowerUserId: data.borrowerUserId,   // ★ 借阅人 ID：admin 列表借阅数统计用
       },
     });
     if (updated.count === 0) {
@@ -101,6 +103,7 @@ export const booksRepo = {
         borrowerPhone: null,
         borrowedAt: null,
         dueAt: null,
+        borrowerUserId: null,   // ★ 同步清空，否则借阅数统计会残留
       },
     });
     if (updated.count === 0) {
@@ -142,7 +145,8 @@ function toDto(book: Book) {
     status: book.status,
     summary: book.summary,
     borrowerName: book.borrowerName,
-    borrowerPhone: book.borrowerPhone,
+    borrowerPhone: book.borrowerPhone,                         // ★ admin 看完整信息（API 不分权）
+    borrowerPhoneMasked: maskPhone(book.borrowerPhone),        // ★ 非 admin 用此字段（前端按角色选）
     borrowedAt: book.borrowedAt?.toISOString() ?? null,
     dueAt: book.dueAt?.toISOString() ?? null,
     createdAt: book.createdAt.toISOString(),

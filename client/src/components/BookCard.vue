@@ -5,6 +5,10 @@ import type { Book } from '@/types';
 const props = defineProps<{
   book: Book;
   selected: boolean;
+  // ★ 新增：是否管理员视角
+  //   - true  → 显示 borrowerPhone 明文
+  //   - false → 显示 borrowerPhoneMasked（后端已 mask，前端兜底再 mask 一次）
+  isAdmin: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -16,6 +20,14 @@ const emit = defineEmits<{
 }>();
 
 const isBorrowed = computed(() => props.book.status === 'BORROWED');
+
+// ★ 按角色选展示的手机号：admin 看明文，其他看 mask
+//   服务端 DTO 同时给了 borrowerPhone + borrowerPhoneMasked；前端不再 mask 计算。
+const displayPhone = computed(() =>
+  props.isAdmin
+    ? (props.book.borrowerPhone ?? '—')
+    : (props.book.borrowerPhoneMasked ?? props.book.borrowerPhone ?? '—')
+);
 
 function fmt(s: string | null | undefined): string {
   if (!s) return '—';
@@ -43,7 +55,7 @@ function fmt(s: string | null | undefined): string {
     <p class="author">{{ book.author }}</p>
     <p v-if="book.summary" class="summary">{{ book.summary }}</p>
     <div v-if="isBorrowed" class="borrower">
-      <div><strong>{{ book.borrowerName }}</strong> · {{ book.borrowerPhone }}</div>
+      <div><strong>{{ book.borrowerName }}</strong> · {{ displayPhone }}</div>
       <div class="borrower-dates">
         借出 {{ fmt(book.borrowedAt) }} · 应还 {{ fmt(book.dueAt) }}
       </div>

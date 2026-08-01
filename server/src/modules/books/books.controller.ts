@@ -91,7 +91,8 @@ export const booksController = {
     try {
       const id = parseIdParam(req);
       const input = borrowSchema.parse(req.body);
-      const data = await booksService.borrow(id, input);
+      // ★ requireAuth 已保证 req.userId 存在，这里用 ! narrowing
+      const data = await booksService.borrow(id, input, req.userId!);
       res.json({ success: true, data });
     } catch (err) {
       next(err);

@@ -28,7 +28,7 @@ export class AuthService {
 
       // ★ 不再注册即送书目——示例馆藏由 index.ts 启动时种一次（社区共享）
 
-      return { token: signToken({ userId: user.id }), user: this.toSafeUser(user) };
+      return { token: signToken({ userId: user.id, isAdmin: user.isAdmin }), user: this.toSafeUser(user) };
     } catch (err) {
       // 并发注册同一邮箱：第二个请求会因 UNIQUE 索引抛 P2002
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -45,7 +45,7 @@ export class AuthService {
     const ok = await verifyPassword(input.password, user.passwordHash);
     if (!ok) throw new HttpError(401, 'INVALID_CREDENTIALS', '邮箱或密码错误');
 
-    return { token: signToken({ userId: user.id }), user: this.toSafeUser(user) };
+    return { token: signToken({ userId: user.id, isAdmin: user.isAdmin }), user: this.toSafeUser(user) };
   }
 
   async me(userId: number) {
@@ -54,11 +54,12 @@ export class AuthService {
     return this.toSafeUser(user);
   }
 
-  private toSafeUser(user: { id: number; email: string; displayName: string; createdAt: Date }) {
+  private toSafeUser(user: { id: number; email: string; displayName: string; isAdmin: boolean; createdAt: Date }) {
     return {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      isAdmin: user.isAdmin,   // ★ 前端 router/AccountMenu 据此显示管理员入口
       createdAt: user.createdAt.toISOString(),
     };
   }
