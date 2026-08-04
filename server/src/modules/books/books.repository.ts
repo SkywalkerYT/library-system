@@ -44,12 +44,12 @@ export const booksRepo = {
     return book ? toDto(book) : null;
   },
 
-  async create(data: { title: string; author: string; category: string; summary?: string | null }) {
+  async create(data: { title: string; author: string; category: string; summary?: string | null; coverUrl?: string | null }) {
     const book = await prisma.book.create({ data });
     return toDto(book);
   },
 
-  async update(id: number, data: { title: string; author: string; category: string; summary?: string | null }) {
+  async update(id: number, data: { title: string; author: string; category: string; summary?: string | null; coverUrl?: string | null }) {
     // ★ 先检查存在（避免 update 0 条返回 OK 导致 404 误报成 200）
     const existing = await prisma.book.findFirst({ where: { id } });
     if (!existing) return null;
@@ -144,6 +144,7 @@ function toDto(book: Book) {
     category: book.category,
     status: book.status,
     summary: book.summary,
+    coverUrl: book.coverUrl,
     borrowerName: book.borrowerName,
     borrowerPhone: book.borrowerPhone,                         // ★ admin 看完整信息（API 不分权）
     borrowerPhoneMasked: maskPhone(book.borrowerPhone),        // ★ 非 admin 用此字段（前端按角色选）

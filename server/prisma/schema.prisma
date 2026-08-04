@@ -45,6 +45,7 @@ model Book {
   category     String     @db.VarChar(20)
   status       BookStatus @default(AVAILABLE)
   summary      String?    @db.Text
+  coverUrl     String?    @db.VarChar(500)  // ★ 图书封面：/api/covers/<uuid>.<ext>
 
   // ★ 借阅字段（新增）
   borrowerName   String?   @db.VarChar(30)

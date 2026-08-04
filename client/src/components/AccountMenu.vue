@@ -50,6 +50,12 @@ function goAdmin() {
   router.push('/admin/users');
 }
 
+// ★ 跳管理员批量封面上传页
+function goAdminCovers() {
+  close();
+  router.push('/admin/covers');
+}
+
 /**
  * 点击组件外部关闭浮层 —— 用 contains 判断
  * ★ 注意：trigger 上用 @click.stop 防自爆
@@ -127,6 +133,14 @@ onUnmounted(() => {
           @click="goAdmin"
         >
           管理员面板
+        </button>
+        <button
+          v-if="auth.user?.isAdmin"
+          class="btn btn--ghost btn--block"
+          type="button"
+          @click="goAdminCovers"
+        >
+          批量上传封面
         </button>
         <button class="btn btn--ghost btn--block" type="button" @click="logout">退出登录</button>
       </div>

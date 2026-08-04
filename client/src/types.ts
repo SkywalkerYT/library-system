@@ -20,6 +20,7 @@ export interface Book {
   category: string;
   status: BookStatus;
   summary: string | null;
+  coverUrl: string | null;                 // ★ 封面路径：/api/covers/<uuid>.<ext>，null 用内联 SVG 占位
   borrowerName: string | null;
   borrowerPhone: string | null;          // ★ 明文（admin 用）
   borrowerPhoneMasked: string | null;    // ★ 遮罩版（非 admin 用）
@@ -43,6 +44,29 @@ export interface BookStats {
   total: number;
   borrowed: number;
   available: number;
+}
+
+// ★ Admin 批量封面上传响应（POST /api/admin/books/batch-cover）
+export interface CoverUploadItem {
+  id: number;
+  coverUrl: string;
+  replaced: boolean;
+  filename: string;
+}
+
+export interface CoverUploadError {
+  filename: string;
+  bookId?: number;
+  reason: string;
+  message: string;
+}
+
+export interface CoverBatchResult {
+  total: number;
+  success: number;
+  failed: number;
+  items: CoverUploadItem[];
+  errors: CoverUploadError[];
 }
 
 // ★ 单个分类项：name 给 pill 用，count 留给「分类 + 书数小角标」用
