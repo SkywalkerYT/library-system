@@ -126,4 +126,21 @@ export const booksController = {
       next(err);
     }
   },
+
+  // ★ 上传封面：multer 已落盘到 uploads/covers/<uuid>.<ext>，只需返回路径
+  //   - multer.single('file') 把文件挂到 req.file
+  //   - 不入库：用户还没确认保存书，先把路径返给前端
+  //   - 前端保存书籍时把 coverUrl 传给 POST /api/books
+  async uploadCover(req: Request, res: Response, next: NextFunction) {
+    try {
+      const file = (req as Request & { file?: Express.Multer.File }).file;
+      if (!file) {
+        throw new HttpError(400, 'NO_FILE', '未收到封面文件');
+      }
+      const coverUrl = `/api/covers/${file.filename}`;
+      res.json({ success: true, data: { coverUrl } });
+    } catch (err) {
+      next(err);
+    }
+  },
 };

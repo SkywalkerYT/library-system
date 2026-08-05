@@ -9,7 +9,9 @@
 //
 // 环境变量：
 //   PORT       监听端口（默认 8080）
-//   BACKEND_URL  后端地址（默认 http://library-backend.ns-vx7bk1kv.svc:3000）
+//   BACKEND_URL  后端地址（默认 https://slyhifcyehel.sealoshzh.site）
+//                ★ 2026-08-05 根因修复：旧默认值 library-backend.ns-vx7bk1kv.svc:3000
+//                  是失效的 K8s namespace DNS，fetch() 抛 'fetch failed' → 返 502。
 // ============================================
 const http = require('http');
 const fs = require('fs');
@@ -18,7 +20,7 @@ const path = require('path');
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = '0.0.0.0';
 const DIST_DIR = path.join(__dirname, 'dist');
-const BACKEND = process.env.BACKEND_URL || 'http://library-backend.ns-vx7bk1kv.svc:3000';
+const BACKEND = process.env.BACKEND_URL || 'https://slyhifcyehel.sealoshzh.site';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

@@ -89,12 +89,36 @@ function openEdit(book: Book) {
   formOpen.value = true;
 }
 
-async function onFormSubmit(payload: { title: string; author: string; category: string; summary: string | null }) {
+async function onFormSubmit(payload: {
+  title: string;
+  author: string;
+  category: string;
+  summary: string | null;
+  coverUrl: string | null;
+  coverChanged: boolean;
+}) {
   try {
     if (formBook.value) {
-      await books.update(formBook.value.id, payload);
+      // ★ 编辑模式：coverChanged=false → 不带 coverUrl，让服务端字段保留
+      //   store 内部已用 Parameters<typeof booksApi.update>[1]，类型自动适配
+      const updatePayload: Parameters<typeof books.update>[1] = {
+        title: payload.title,
+        author: payload.author,
+        category: payload.category,
+        summary: payload.summary,
+      };
+      if (payload.coverChanged) updatePayload.coverUrl = payload.coverUrl;
+      await books.update(formBook.value.id, updatePayload);
     } else {
-      await books.create(payload);
+      // ★ 新建模式：coverUrl 一定是用户主动设的（dialog 已保证）
+      const createPayload: Parameters<typeof books.create>[0] = {
+        title: payload.title,
+        author: payload.author,
+        category: payload.category,
+        summary: payload.summary,
+        coverUrl: payload.coverUrl,
+      };
+      await books.create(createPayload);
     }
     formOpen.value = false;
   } catch (e) {

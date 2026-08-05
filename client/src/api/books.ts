@@ -8,10 +8,10 @@ export const booksApi = {
   async get(id: number) {
     return request<Book>(http.get(`/books/${id}`));
   },
-  async create(input: { title: string; author: string; category: string; summary?: string | null }) {
+  async create(input: { title: string; author: string; category: string; summary?: string | null; coverUrl?: string | null }) {
     return request<Book>(http.post('/books', input));
   },
-  async update(id: number, input: Partial<{ title: string; author: string; category: string; summary: string | null }>) {
+  async update(id: number, input: Partial<{ title: string; author: string; category: string; summary: string | null; coverUrl: string | null }>) {
     return request<Book>(http.patch(`/books/${id}`, input));
   },
   async remove(id: number) {
@@ -32,5 +32,16 @@ export const booksApi = {
   // ★ 全量分类（不受分页/筛选影响），给 BookListView 顶部 pill 列表用
   async categories() {
     return request<CategoryItem[]>(http.get('/books/categories'));
+  },
+  // ★ 上传封面文件 → 返回 coverUrl 路径（/api/covers/<uuid>.<ext>）
+  //   - FormData 上传：不能用 JSON Content-Type，要让浏览器自动加 multipart 边界
+  //   - axios 不显式 set Content-Type，它会自己加 boundary
+  //   - 上传后由父组件把返回的 coverUrl 写进 POST /api/books payload
+  async uploadCover(file: File) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request<{ coverUrl: string }>(http.post('/books/upload-cover', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }));
   },
 };

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { Book } from '@/types';
+import { FALLBACK_COVER } from '@/utils/coverFallback';
 
 const props = defineProps<{
   book: Book;
@@ -29,6 +30,18 @@ const displayPhone = computed(() =>
     : (props.book.borrowerPhoneMasked ?? props.book.borrowerPhone ?? '—')
 );
 
+// ★ 封面 src：coverUrl 优先，失败回退到内联 SVG
+//   - coverBroken 标记：<img onerror> 触发后切到占位
+//   - 即使 coverUrl 为 null，第一次渲染直接用占位（不会触发 onerror）
+const coverBroken = ref(false);
+const coverSrc = computed(() => {
+  if (props.book.coverUrl && !coverBroken.value) return props.book.coverUrl;
+  return FALLBACK_COVER(props.book.title);
+});
+function onCoverError() {
+  if (!coverBroken.value) coverBroken.value = true;
+}
+
 function fmt(s: string | null | undefined): string {
   if (!s) return '—';
   const d = new Date(s);
@@ -51,6 +64,16 @@ function fmt(s: string | null | undefined): string {
       </span>
       <span class="category">{{ book.category || '未分类' }}</span>
     </header>
+    <!-- ★ 封面：object-fit cover 保证比例 + 加载慢也不影响首屏（loading=lazy） -->
+    <div class="book-card__cover-wrap">
+      <img
+        class="book-card__cover"
+        :src="coverSrc"
+        :alt="book.title"
+        loading="lazy"
+        @error="onCoverError"
+      />
+    </div>
     <h3 class="title" :title="book.title">{{ book.title }}</h3>
     <p class="author">{{ book.author }}</p>
     <p v-if="book.summary" class="summary">{{ book.summary }}</p>
@@ -96,6 +119,23 @@ function fmt(s: string | null | undefined): string {
   font-size: 0.78rem;
   color: var(--color-text-soft);
 }
+
+/* ★ 封面：固定比例容器 + img object-fit cover —— 不会因图大小不同把卡片撑变形 */
+.book-card__cover-wrap {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2, #f3f4f6);
+}
+.book-card__cover {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
 .title {
   margin: 0.25rem 0 0;
   font-size: 1rem;

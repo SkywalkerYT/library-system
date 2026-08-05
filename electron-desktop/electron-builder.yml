@@ -1,0 +1,56 @@
+# ============================================
+# electron-builder 配置:打包成 Windows .exe
+# ============================================
+# 关键设计:
+#   - 先构建 client(产出 dist/),再构建 electron,最后 electron-builder 打包
+#   - NSIS 安装器(可生成桌面快捷方式 + 开始菜单)
+#   - better-sqlite3 是 native 模块,需要在 builder 里指定解压路径
+
+appId: com.community.library
+productName: 社区图书馆
+copyright: Copyright © 2026
+
+directories:
+  output: dist-installer        # 打包产物输出
+  buildResources: resources    # 图标等资源
+
+files:
+  # 主进程编译产物
+  - "dist/**/*"
+  # 前端构建产物(从 ../client/dist 复制)
+  - "../client/dist/**/*"
+  # package.json
+  - "package.json"
+  # 排除 native 模块源码,只带 .node 二进制
+  - "!**/*.map"
+
+# ★ native 模块处理:better-sqlite3 在 asar 外解压
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+
+# Windows 特定配置
+win:
+  target:
+    - target: nsis            # NSIS 安装器(.exe)
+      arch:
+        - x64                 # 64 位
+  icon: resources/icon.ico    # 需要自己准备 256x256 的 .ico
+  # 不要求代码签名(个人项目,跳过证书)
+  # signingAndValidation: null
+
+nsis:
+  oneClick: false              # 不是一键安装,显示安装向导
+  perMachine: false            # 用户级安装(不需要管理员)
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 社区图书馆
+
+# macOS 配置(可选,暂不打包)
+mac:
+  target: dmg
+  icon: resources/icon.icns
+
+# 跨平台构建:在 Windows 上构建 Windows,在 Mac 上构建 Mac
+# 不能在 Linux 上构建 .exe(需要 Wine)

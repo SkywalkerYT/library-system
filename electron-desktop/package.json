@@ -1,0 +1,32 @@
+{
+  "name": "library-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "社区图书馆桌面端(Electron + 本地缓存 + Sealos 同步)",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:main": "tsc -p tsconfig.json",
+    "build:client": "cd ../client && npm run build",
+    "build": "npm run build:client && npm run build:main",
+    "dev:main": "tsx watch src/main.ts",
+    "dev:client": "cd ../client && npm run dev",
+    "dev": "concurrently \"npm:dev:main\" \"npm:dev:client\"",
+    "start": "npm run build && electron .",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:mac": "npm run build && electron-builder --mac"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "idb": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.14.10",
+    "concurrently": "^9.0.1",
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}

@@ -4,6 +4,7 @@
 // ============================================
 import express from 'express';
 import cors from 'cors';
+import path from 'node:path';
 import { env } from './config/env.js';
 import { prisma } from './config/prisma.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -34,7 +35,9 @@ export function createApp() {
         if (!origin) return cb(null, true);
         if (exactOrigins.includes(origin)) return cb(null, true);
         if (vercelPreviewOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error(`CORS blocked: ${origin}`));
+        // ★ 不抛 Error —— 抛出会绕过 errorHandler,被 Node 当 uncaughtException 杀进程
+        //   返回 false:cors 库不发 CORS 响应头,浏览器自行拦截,服务器保持稳定
+        return cb(null, false);
       },
       credentials: true,
     })
@@ -56,6 +59,21 @@ export function createApp() {
   app.use('/api/books', booksRouter);
   // ★ /api/admin/* 走 adminRouter —— 模块级 requireAuth + requireAdmin 双重守卫
   app.use('/api/admin', adminRouter);
+
+  // ★ 图书封面静态托管 —— /api/covers/* → <cwd>/uploads/covers/*
+  //   - maxAge 7d + immutable：浏览器长期缓存（文件名含 uuid，永不冲突）
+  //   - index: false：禁止列出目录
+  //   - fallthrough: true：缺失文件继续到 404 兜底
+  //   - 注册在 /api/admin 之后也没关系：prefix 命中规则按声明顺序，本前缀会先匹配
+  app.use(
+    '/api/covers',
+    express.static(path.join(process.cwd(), 'uploads', 'covers'), {
+      maxAge: '7d',
+      immutable: true,
+      index: false,
+      fallthrough: true,
+    })
+  );
 
   // ★ 404 兜底
   app.use((req, res) => {

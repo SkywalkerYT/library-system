@@ -6,6 +6,16 @@ import { env } from './config/env.js';
 import { prisma } from './config/prisma.js';
 import { seedDemoBooksIfEmpty } from './modules/auth/demo-books.js';
 
+// ★ 防御性兜底:任何未捕获的同步异常 / Promise rejection 都不再杀进程
+//   历史上 app.ts 的 cors 回调 `cb(new Error(...))` 曾绕过 errorHandler,触发进程退出
+//   修复后此处仍保留作为最后一道防线,避免类似 bug 再次导致服务中断
+process.on('uncaughtException', (err) => {
+  console.error('💥 uncaughtException (process will NOT exit):', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 unhandledRejection (process will NOT exit):', reason);
+});
+
 async function bootstrap() {
   // ★ Sealos 探针要求端口尽快可用 → 先 listen 让平台探针通过，
   //   种子挪到 listen 之后，DB 暂时不通也不阻塞服务。

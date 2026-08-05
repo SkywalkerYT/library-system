@@ -13,11 +13,23 @@ const summaryField = z
   .optional()
   .nullable();
 
+// ★ 封面 URL 校验：仅接受本服务 /api/covers/<uuid>.<ext> 路径
+//   - 不接受外链（防 SSRF、防"借图床"滥用）
+//   - 不接受任意字符串（避免存乱七八糟的 URL 让静态托管出 404）
+const COVER_PATH = /^\/api\/covers\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/i;
+const coverUrlField = z
+  .string()
+  .max(500, '封面路径过长')
+  .regex(COVER_PATH, '封面路径不合法')
+  .optional()
+  .nullable();
+
 export const bookCreateSchema = z.object({
   title: trimmed(50),
   author: trimmed(30),
   category: trimmed(20),
   summary: summaryField,
+  coverUrl: coverUrlField,
 });
 
 export const bookUpdateSchema = z.object({
@@ -25,6 +37,7 @@ export const bookUpdateSchema = z.object({
   author: trimmed(30),
   category: trimmed(20),
   summary: summaryField,
+  coverUrl: coverUrlField,
 });
 
 export const borrowSchema = z
