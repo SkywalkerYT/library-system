@@ -20,11 +20,19 @@ const showBackHome = computed(
 <template>
   <header class="app-header">
     <div class="left">
-      <div class="brand">📚 我的小书库 · Online</div>
       <!--
-        ★ admin 路由专属：router-link 自带键盘可达（Tab + Enter）
+        ★ 品牌区本身就是返回首页的入口（所有用户）
+          - router-link 自带键盘可达（Tab + Enter）
+          - 走 SPA 路由：保留 history，普通用户浏览器后退键仍可用
+          - 路径写死 /books（与 router/index.ts 的 "/" → "/books" 重定向一致）
+      -->
+      <router-link to="/books" class="brand" aria-label="返回首页">
+        📚 我的小书库 · Online
+      </router-link>
+      <!--
+        ★ admin 路由专属：仅在 /admin/* 下额外显示「← 返回首页」按钮
+          - 品牌已经能点回首页，但 admin 跳深层子页时需要更显眼的"返回"提示
           - 不会出现于普通用户页面
-          - 未来加 /admin/books 等子页零改动
       -->
       <router-link
         v-if="showBackHome"
@@ -64,6 +72,15 @@ const showBackHome = computed(
   font-weight: 700;
   color: var(--color-primary);
   font-size: 1.05rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  user-select: none;
+}
+.brand:hover,
+.brand:focus-visible {
+  opacity: 0.78;
+  outline: none;
 }
 .meta {
   display: flex;

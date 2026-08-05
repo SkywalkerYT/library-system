@@ -9,14 +9,9 @@ import type { Prisma } from '@prisma/client';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { HttpError } from '../../utils/errors.js';
+import { detectImageExt } from '../../utils/image.js';
 
 const COVER_DIR = path.join(process.cwd(), 'uploads', 'covers');
-
-const ALLOWED_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-};
 
 // ────────────────────────────────────────────
 // 文件名 → bookId 解析
@@ -135,10 +130,20 @@ export const adminService = {
   // 单本封面落盘 + DB 更新
   //   - filename = cover-{id 4位零填充}.{ext}
   //   - replace=false 时已有封面抛 409（防误覆盖）
+  //   - ext 按 buffer magic number 判定：不信 mimetype（浏览器按扩展名撒谎）
+  //     修 2026-08-05「批量上传的图后端不显示」bug：原 ALLOWED_EXT[mimetype] 把 PNG 存为 .jpg，
+  //     Express.static 返 image/jpeg，Safari/iOS 拒绝渲染 → onerror → 占位 SVG
   // ────────────────────────────────────────────
   async applyCoverForBook(bookId: number, file: Express.Multer.File, replace: boolean) {
-    const ext = ALLOWED_EXT[file.mimetype];
-    if (!ext) throw new HttpError(415, 'UNSUPPORTED_MEDIA_TYPE', '不支持的图片格式');
+    const ext = detectImageExt(file.buffer);
+    if (!ext) {
+      throw new HttpError(
+        415,
+        'UNSUPPORTED_MEDIA_TYPE',
+        `不支持的图片格式（mimetype=${file.mimetype ?? 'unknown'}，` +
+          `期望 JPEG/PNG/WebP）`,
+      );
+    }
 
     const book = await prisma.book.findUnique({
       where: { id: bookId },
